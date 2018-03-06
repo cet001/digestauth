@@ -13,15 +13,20 @@ import (
 func TestNewDigestAuthClient(t *testing.T) {
 	targetClient := &http.Client{}
 	digestAuthClient := NewDigestAuthClient(targetClient)
-	assert.NotNil(t, digestAuthClient.httpGet)
 	assert.NotNil(t, digestAuthClient.httpDo)
+}
+
+func TestGet_invalidUrl(t *testing.T) {
+	client := NewDigestAuthClient(&http.Client{})
+	_, err := client.Get("http://x  y") // URL contains space in path, which is bad
+	assert.NotNil(t, err)
 }
 
 func TestGet_responseError(t *testing.T) {
 	var receivedUrl string
 	client := &DigestAuthClient{
-		httpGet: func(url string) (resp *http.Response, err error) {
-			receivedUrl = url
+		httpDo: func(req *http.Request) (*http.Response, error) {
+			receivedUrl = req.URL.String()
 			return nil, fmt.Errorf("blah!")
 		},
 	}
@@ -38,7 +43,7 @@ func TestGet_authHeaderNotProvided(t *testing.T) {
 		StatusCode: http.StatusUnauthorized,
 	}
 	client := &DigestAuthClient{
-		httpGet: func(url string) (resp *http.Response, err error) {
+		httpDo: func(req *http.Request) (*http.Response, error) {
 			return fakeResponse, nil
 		},
 	}
@@ -59,7 +64,7 @@ func TestGet_notDigestAuth(t *testing.T) {
 	}
 	fakeResponse.Header.Add("Www-Authenticate", "foo=bar")
 	client := &DigestAuthClient{
-		httpGet: func(url string) (resp *http.Response, err error) {
+		httpDo: func(req *http.Request) (*http.Response, error) {
 			return fakeResponse, nil
 		},
 	}
@@ -89,7 +94,7 @@ func TestGet_CalcDigestAuthError(t *testing.T) {
 	}
 	fakeResponse.Header.Add("Www-Authenticate", "Digest realm=my_realm, qop=auth, nonce=abc123")
 	client := &DigestAuthClient{
-		httpGet: func(url string) (resp *http.Response, err error) {
+		httpDo: func(req *http.Request) (*http.Response, error) {
 			return fakeResponse, nil
 		},
 	}
@@ -113,7 +118,7 @@ func TestCalcDigestAuth_missingCredentials(t *testing.T) {
 	}
 
 	for _, badUrl := range badUrls {
-		req := httptest.NewRequest("GET", badUrl, nil)
+		req := httptest.NewRequest(http.MethodGet, badUrl, nil)
 		_, err := CalcDigestAuth(req, "my_realm", "some_nonce", "auth")
 		assert.EqualError(t, err, "Username or password not provided in request URL")
 	}

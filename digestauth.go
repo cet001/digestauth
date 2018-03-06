@@ -38,19 +38,21 @@ import (
 //   - https://tools.ietf.org/html/rfc2617
 //   - http://httpwg.org/specs/rfc7616.html
 type DigestAuthClient struct {
-	httpGet func(url string) (resp *http.Response, err error)
-	httpDo  func(req *http.Request) (resp *http.Response, err error)
+	httpDo func(req *http.Request) (resp *http.Response, err error)
 }
 
 func NewDigestAuthClient(client *http.Client) *DigestAuthClient {
 	return &DigestAuthClient{
-		httpGet: client.Get,
-		httpDo:  client.Do,
+		httpDo: client.Do,
 	}
 }
 
 func (me *DigestAuthClient) Get(url string) (*http.Response, error) {
-	response, err := me.httpGet(url)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	response, err := me.httpDo(req)
 	if err != nil || response.StatusCode != http.StatusUnauthorized {
 		return response, err
 	}

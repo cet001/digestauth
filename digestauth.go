@@ -48,11 +48,12 @@ func NewDigestAuthClient(client *http.Client) *DigestAuthClient {
 }
 
 func (me *DigestAuthClient) Get(url string) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	request, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	response, err := me.httpDo(req)
+
+	response, err := me.httpDo(request)
 	if err != nil || response.StatusCode != http.StatusUnauthorized {
 		return response, err
 	}
@@ -87,8 +88,8 @@ func (me *DigestAuthClient) Get(url string) (*http.Response, error) {
 
 	response.Body.Close()
 
-	request, _ := http.NewRequest("GET", url, nil)
-	request.Header.Set("Authorization", digestAuth)
+	authorizedRequest, _ := http.NewRequest("GET", url, nil)
+	authorizedRequest.Header.Set("Authorization", digestAuth)
 	return me.httpDo(request)
 }
 

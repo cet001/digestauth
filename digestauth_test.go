@@ -62,7 +62,7 @@ func TestGet_notDigestAuth(t *testing.T) {
 		StatusCode: http.StatusUnauthorized,
 		Header:     http.Header{},
 	}
-	fakeResponse.Header.Add("Www-Authenticate", "foo=bar")
+	fakeResponse.Header.Add("WWW-Authenticate", "foo=bar")
 	client := &DigestAuthClient{
 		httpDo: func(req *http.Request) (*http.Response, error) {
 			return fakeResponse, nil

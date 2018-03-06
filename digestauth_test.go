@@ -3,14 +3,21 @@ package digestauth
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
-	"net/http"
 )
 
-func TestGet(t *testing.T) {
+func TestNewDigestAuthClient(t *testing.T) {
+	targetClient := &http.Client{}
+	digestAuthClient := NewDigestAuthClient(targetClient)
+	assert.NotNil(t, digestAuthClient.httpGet)
+	assert.NotNil(t, digestAuthClient.httpDo)
+}
+
+func TestGet_responseError(t *testing.T) {
 	var receivedUrl string
 
 	client := &DigestAuthClient{
@@ -24,14 +31,54 @@ func TestGet(t *testing.T) {
 	assert.EqualError(t, err, "blah!")
 }
 
-func TestCalcDigestAuth_missingPassword(t *testing.T) {
+// If server returns 'HTTP 401 UNAUTHORIZED' status code, but does not provide
+// the 'Www-Authenticate' header (that tells the client how they should
+// authenticate), expect the client to just pass through the response.
+func TestGet_authHeaderNotProvided(t *testing.T) {
+	fakeResponse := &http.Response{
+		StatusCode: http.StatusUnauthorized,
+	}
+	client := &DigestAuthClient{
+		httpGet: func(url string) (resp *http.Response, err error) {
+			return fakeResponse, nil
+		},
+	}
+
+	response, err := client.Get("http://some/url")
+	assert.Nil(t, err)
+	assert.Equal(t, fakeResponse, response)
+}
+
+// If server returns an HTTP 401 status code along with a 'Www-Authenticate'
+// header, but the header doesn't contain a key called 'Digest realm', assume
+// the server is asking for an authentication type other than Digest Auth, and
+// simply pass through the original response.
+func TestGet_notDigestAuth(t *testing.T) {
+	fakeResponse := &http.Response{
+		StatusCode: http.StatusUnauthorized,
+		Header:     http.Header{},
+	}
+	fakeResponse.Header.Add("Www-Authenticate", "foo=bar")
+	client := &DigestAuthClient{
+		httpGet: func(url string) (resp *http.Response, err error) {
+			return fakeResponse, nil
+		},
+	}
+
+	response, err := client.Get("http://some/url")
+	assert.Nil(t, err)
+	assert.Equal(t, fakeResponse, response)
+}
+
+func TestCalcDigestAuth_missingCredentials(t *testing.T) {
 	// Each of these URLs has something wrong with it; either username or
 	// password (or both) are missing.
 	badUrls := []string{
-		"http://john@example.com",
-		"http://john:@example.com",
-		"http://john.smith@example.com",
-		"http://:secret-pass@example.com",
+		"http://john@example.com",         // username but no passwd
+		"http://john.smith@example.com",   // username but no passwd
+		"http://john:@example.com",        // username but empty passwd
+		"http://:secret-pass@example.com", // passwd but empty username
+		"http://example.com",              // both username and passwd missing
 	}
 
 	for _, badUrl := range badUrls {

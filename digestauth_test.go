@@ -19,7 +19,6 @@ func TestNewDigestAuthClient(t *testing.T) {
 
 func TestGet_responseError(t *testing.T) {
 	var receivedUrl string
-
 	client := &DigestAuthClient{
 		httpGet: func(url string) (resp *http.Response, err error) {
 			receivedUrl = url
@@ -68,6 +67,38 @@ func TestGet_notDigestAuth(t *testing.T) {
 	response, err := client.Get("http://some/url")
 	assert.Nil(t, err)
 	assert.Equal(t, fakeResponse, response)
+}
+
+func TestGet_CalcDigestAuthError(t *testing.T) {
+	// Replace the real CalcDigestAuth() with a mock
+	origCalcDigestAuth := CalcDigestAuth
+	defer func() {
+		CalcDigestAuth = origCalcDigestAuth
+	}()
+	var receivedRealm, receivedNonce, receivedQop string
+	CalcDigestAuth = func(request *http.Request, realm, nonce, qop string) (string, error) {
+		receivedRealm = realm
+		receivedNonce = nonce
+		receivedQop = qop
+		return "", fmt.Errorf("blah!")
+	}
+
+	fakeResponse := &http.Response{
+		StatusCode: http.StatusUnauthorized,
+		Header:     http.Header{},
+	}
+	fakeResponse.Header.Add("Www-Authenticate", "Digest realm=my_realm, qop=auth, nonce=abc123")
+	client := &DigestAuthClient{
+		httpGet: func(url string) (resp *http.Response, err error) {
+			return fakeResponse, nil
+		},
+	}
+
+	_, err := client.Get("http://some/url")
+	assert.Equal(t, "my_realm", receivedRealm)
+	assert.Equal(t, "auth", receivedQop)
+	assert.Equal(t, "abc123", receivedNonce)
+	assert.EqualError(t, err, "Error calculating 'Authorization' header: blah!")
 }
 
 func TestCalcDigestAuth_missingCredentials(t *testing.T) {

@@ -76,12 +76,12 @@ func TestGet_notDigestAuth(t *testing.T) {
 
 func TestGet_CalcDigestAuthError(t *testing.T) {
 	// Replace the real CalcDigestAuth() with a mock
-	origCalcDigestAuth := CalcDigestAuth
+	origCalcDigestAuth := calcDigestAuth
 	defer func() {
-		CalcDigestAuth = origCalcDigestAuth
+		calcDigestAuth = origCalcDigestAuth
 	}()
 	var receivedRealm, receivedNonce, receivedQop string
-	CalcDigestAuth = func(request *http.Request, realm, nonce, qop string) (string, error) {
+	calcDigestAuth = func(request *http.Request, realm, nonce, qop string) (string, error) {
 		receivedRealm = realm
 		receivedNonce = nonce
 		receivedQop = qop

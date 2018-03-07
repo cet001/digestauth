@@ -96,7 +96,12 @@ func (me *DigestAuthClient) Get(url string) (*http.Response, error) {
 // Calculates the digest authorization header value for the provided inputs.
 // The URL within the provided http.Request object must contain the username and
 // password credentials.
-var CalcDigestAuth = func(request *http.Request, realm, nonce, qop string) (string, error) {
+func CalcDigestAuth(request *http.Request, realm, nonce, qop string) (string, error) {
+	return calcDigestAuth(request, realm, nonce, qop)
+}
+
+// Internal implementation defined as a global var so that it can be mocked out within unit tests.
+var calcDigestAuth = func(request *http.Request, realm, nonce, qop string) (string, error) {
 	uri := request.URL.RequestURI()
 	userInfo := request.URL.User
 	if userInfo == nil {

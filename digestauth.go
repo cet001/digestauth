@@ -10,7 +10,7 @@
 //      "github.com/cet001/digestauth"
 //  )
 //
-//  client := digestauth.NewDigestAuthClient()
+//  client := digestauth.NewDigestAuthClient(nil)
 //  response, err := client.Get("http://john:secret-passwd@example.com/some/resource")
 //
 // Some major limitations:
@@ -41,10 +41,13 @@ type DigestAuthClient struct {
 	httpDo func(req *http.Request) (resp *http.Response, err error)
 }
 
+// Creates a new DigestAuthClient that uses the provided http.Client object to
+// send HTTP requests.  If client is nil, a new http.Client is implicity created.
 func NewDigestAuthClient(client *http.Client) *DigestAuthClient {
-	return &DigestAuthClient{
-		httpDo: client.Do,
+	if client == nil {
+		client = &http.Client{}
 	}
+	return &DigestAuthClient{httpDo: client.Do}
 }
 
 func (me *DigestAuthClient) Get(url string) (*http.Response, error) {

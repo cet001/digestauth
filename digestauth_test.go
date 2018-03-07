@@ -11,8 +11,12 @@ import (
 )
 
 func TestNewDigestAuthClient(t *testing.T) {
-	targetClient := &http.Client{}
-	digestAuthClient := NewDigestAuthClient(targetClient)
+	// CASE 1: client not provided
+	digestAuthClient := NewDigestAuthClient(nil)
+	assert.NotNil(t, digestAuthClient.httpDo)
+
+	// CASE 2: client was provided
+	digestAuthClient = NewDigestAuthClient(&http.Client{})
 	assert.NotNil(t, digestAuthClient.httpDo)
 }
 
